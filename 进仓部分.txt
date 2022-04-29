@@ -1,0 +1,169 @@
+
+进仓部分场景:
+1.终点:总计五层,每层10个缓存料仓.(x,y),x∈[0,4],y∈[0,9].
+2.起点:每批次运送5个料到空闲的缓存料仓.起点位置在(1,8).
+3.速度:放料机构的横移方向移动速度w,纵移方向移动速度z
+4.距离:横轴料仓相邻距离L,纵轴料仓相邻距离H
+
+进仓缓存路线优化算法
+
+
+C#实现
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="newwholeDatas">料相关参数:层数Floor,库位Seat,仓位Door</param>
+/// <param name="InSets">缓存料仓现有库位 0:空闲 1:占用</param>
+/// <param name="index">顺序</param>
+/// <returns>是否分配到位</returns>
+private bool CacheScheduleS(WholeData[] newwholeDatas, int[,] InSets, int[] index)
+{
+	//暂未考虑速度，实际调机时经常修改速度 
+    int H = 2;
+	int L = 1;
+	//Door:1 - 10
+	//int[,] InSets_new = InSets;
+	int[,] InSets_new = new int[5, 10];//计算过程不影响原数组
+	Array.Copy(InSets, InSets_new, 50);
+	//优化目标 气缸 缓存号升序 仓位升序
+	int indexstart = 1;
+	int[] doorindex = new int[5];//
+	for (int i = 0; i < 5; i++)
+	{//后续需要对每一层缓存对应的仓位做升序处理(避免某两个逆序导致CT变长)
+		for (int k = 0; k < 5; k++)
+		{
+			if (newwholeDatas[k].Floor == i)
+			{
+				doorindex[k] = indexstart;//按层数升序
+				index[k] = indexstart;//按层数升序
+				indexstart++;
+			}
+		}
+	}
+	for (int i = 0; i < 5; i++)
+	{
+		bool findDoor = false;
+		//for (int j = i; j < 6 + i; j++)
+		foreach (int j in InputLimit[doorindex[i] - 1])
+		{
+			if (InSets_new[newwholeDatas[doorindex[i] - 1].Floor, j - 1] == 0)
+			{
+				newwholeDatas[doorindex[i] - 1].Door = j - 1;
+				InSets_new[newwholeDatas[doorindex[i] - 1].Floor, j - 1] = 1;
+				findDoor = true;
+				break;
+			}
+		}
+		if (findDoor)
+		{
+			continue;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	if (IsSortIn)
+	{
+		double[,] doorpath = new double[6, 6];
+		for (int i = 1; i < 6; i++)
+		{
+			doorpath[0, i] = (int)(Math.Sqrt(Math.Pow((newwholeDatas[i - 1].Floor - 1) * H, 2) + Math.Pow((newwholeDatas[i - 1].Door - 8) * L, 2)));
+		}
+		for (int i = 1; i < 6; i++)
+		{
+			for (int j = i + 1; j < 6; j++)
+			{
+				doorpath[i, j] = Math.Sqrt(Math.Pow((newwholeDatas[i - 1].Floor - newwholeDatas[j - 1].Floor) * H, 2) + Math.Pow((newwholeDatas[i - 1].Door - newwholeDatas[j - 1].Door) * L, 2));
+			}
+			for (int j = 1; j < i; j++)
+			{
+				doorpath[i, j] = Math.Sqrt(Math.Pow((newwholeDatas[i - 1].Floor - newwholeDatas[j - 1].Floor) * H, 2) + Math.Pow((newwholeDatas[i - 1].Door - newwholeDatas[j - 1].Door) * L, 2));
+			}
+		}
+		int[] select = new int[5];
+		int[] checkindex = new int[5];
+		double minpath = double.MaxValue;
+		int minIndex = 0;
+		indexstart = 1;
+		for (int i = 1; i < 6; i++)
+		{
+			if (doorpath[0, i] < minpath && checkindex[i - 1] == 0)
+			{
+				minpath = doorpath[0, i];
+				minIndex = i;
+			}
+		}
+		checkindex[minIndex - 1] = 1;
+		select[0] = minIndex;
+		index[minIndex - 1] = indexstart;
+		for (int j = 0; j < 4; j++)
+		{
+			indexstart++;
+			minpath = double.MaxValue;
+			for (int i = 1; i < 6; i++)
+			{
+				if (doorpath[select[j], i] < minpath && checkindex[i - 1] == 0)
+				{
+					minpath = doorpath[select[j], i];
+					minIndex = i;
+				}
+			}
+			checkindex[minIndex - 1] = 1;
+			select[j + 1] = minIndex;
+			index[minIndex - 1] = indexstart;
+		}
+	}
+	for (int i = 0; i < 5; i++)
+	{
+		ShowMsg(StringMsgType.Info, "Automatic", "floor:" + newwholeDatas[i].Floor + "," + "seat:" + newwholeDatas[i].Seat + "," + "index:" + index[i]);
+	}
+	return true;
+}
+
+//不优化版
+private bool CacheScheduleS2(WholeData[] newwholeDatas, int[,] InSets, int[] index)
+{
+	int[,] InSets_new = new int[5, 10];
+	Array.Copy(InSets, InSets_new, 50);
+	int indexstart = 1;
+	for (int i = 0; i < 5; i++)
+	{
+		for (int k = 0; k < newwholeDatas.Length; k++)
+		{
+			if (newwholeDatas[k].Floor == i)
+			{
+				index[k] = indexstart;//按层数升序
+				indexstart++;
+			}
+		}
+	}
+	for (int i = 0; i < newwholeDatas.Length; i++)
+	{
+		bool findDoor = false;
+		foreach (int j in InputLimit[i])
+		{
+			if (InSets_new[newwholeDatas[i].Floor, j - 1] == 0)
+			{
+				newwholeDatas[i].Door = j - 1;
+				InSets_new[newwholeDatas[i].Floor, j - 1] = 1;
+				findDoor = true;
+				break;
+			}
+		}
+		if (findDoor)
+		{
+			continue;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	for (int i = 0; i < newwholeDatas.Length; i++)
+	{
+		ShowMsg(StringMsgType.Info, "Automatic", "floor:" + newwholeDatas[i].Floor + "," + "seat:" + newwholeDatas[i].Seat + "," + "index:" + index[i]);
+	}
+	return true;
+}
