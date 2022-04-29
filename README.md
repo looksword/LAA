@@ -1,0 +1,2 @@
+# LAA
+Location Allocation Algorithm
