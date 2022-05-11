@@ -10,6 +10,8 @@
 
 C#实现
 
+int[] FloorList = new int[5]{1,0,2,3,4};//层数优先
+
 /// <summary>
 /// 
 /// </summary>
@@ -29,7 +31,7 @@ private bool CacheScheduleS(WholeData[] newwholeDatas, int[,] InSets, int[] inde
 	//优化目标 气缸 缓存号升序 仓位升序
 	int indexstart = 1;
 	int[] doorindex = new int[5];//
-	for (int i = 0; i < 5; i++)
+	foreach (int i in FloorList)
 	{//后续需要对每一层缓存对应的仓位做升序处理(避免某两个逆序导致CT变长)
 		for (int k = 0; k < 5; k++)
 		{
@@ -128,7 +130,7 @@ private bool CacheScheduleS2(WholeData[] newwholeDatas, int[,] InSets, int[] ind
 	int[,] InSets_new = new int[5, 10];
 	Array.Copy(InSets, InSets_new, 50);
 	int indexstart = 1;
-	for (int i = 0; i < 5; i++)
+	foreach (int i in FloorList)
 	{
 		for (int k = 0; k < newwholeDatas.Length; k++)
 		{
